@@ -1,5 +1,10 @@
 package main
 
+import (
+	"flag"
+	"os"
+)
+
 func main() {
 	discordMain(Token)
 }
@@ -8,12 +13,12 @@ var (
 	Token string
 )
 
-// func init() {
-// 	flag.StringVar(&Token, "t", "", "-t <discord_bot_token>")
-// 	flag.Parse()
+func init() {
+	flag.StringVar(&Token, "t", "", "-t <discord_bot_token>")
+	flag.Parse()
 
-// 	if Token == "" {
-// 		flag.Usage()
-// 		os.Exit(1)
-// 	}
-// }
+	if Token == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+}

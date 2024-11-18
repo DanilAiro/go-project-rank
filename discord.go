@@ -47,11 +47,15 @@ func discordMain(token string) {
 		os.Exit(4)
 	}
 
-	command := getCommands()
+	commands := getCommands()
+	var listenCommands []*discordgo.ApplicationCommand
 
-	cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, channels[0].GuildID, command)
-	if err != nil {
-		fmt.Printf("Error adding command: %s\n", err.Error())
+	for _, command := range commands {
+		cmd, err := discord.ApplicationCommandCreate(discord.State.User.ID, channels[0].GuildID, command)
+		if err != nil {
+			fmt.Printf("Error adding command: %s\n", err.Error())
+		}
+		listenCommands = append(listenCommands, cmd)
 	}
 
 	// Block until we get ctrl-c
@@ -62,9 +66,11 @@ func discordMain(token string) {
 
 	// Clean up
 	fmt.Println("Bot exiting")
-	err = discord.ApplicationCommandDelete(discord.State.User.ID, channels[0].GuildID, cmd.ID)
-	if err != nil {
-		fmt.Printf("Error removing command: %s\n", err.Error())
+	for _, command := range listenCommands {
+		err = discord.ApplicationCommandDelete(discord.State.User.ID, channels[0].GuildID, command.ID)
+		if err != nil {
+			fmt.Printf("Error removing command: %s\n", err.Error())
+		}
 	}
 
 	discord.Close()
@@ -94,103 +100,55 @@ func findRankChannels(discord *discordgo.Session) (c []*discordgo.Channel, err e
 	return channels, nil
 }
 
-func getCommands() *discordgo.ApplicationCommand {
+func getCommands() []*discordgo.ApplicationCommand {
+	var commands []*discordgo.ApplicationCommand
 	command := &discordgo.ApplicationCommand{
-		Name:        "test",
-		Description: "A test command with subcommand-groups and subcommands",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Name:        "test-a",
-				Description: "Test-a sub-command group",
-				Options: []*discordgo.ApplicationCommandOption{
-					{
-						Name:        "test-a-a",
-						Description: "Test-a-a sub-command",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-					},
-					{
-						Name:        "test-a-b",
-						Description: "Test-a-b sub-command",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-					},
-				},
-				Type: discordgo.ApplicationCommandOptionSubCommandGroup,
-			},
-			{
-				Name:        "test-b",
-				Description: "Test-b sub-command group",
-				Options: []*discordgo.ApplicationCommandOption{
-					{
-						Name:        "test-b-a",
-						Description: "Test-b-a sub-command",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-					},
-					{
-						Name:        "test-b-b",
-						Description: "Test-b-b sub-command",
-						Type:        discordgo.ApplicationCommandOptionSubCommand,
-					},
-				},
-				Type: discordgo.ApplicationCommandOptionSubCommandGroup,
-			},
-			{
-				Name:        "test-c",
-				Description: "Test-c sub-command",
-				Type:        discordgo.ApplicationCommandOptionSubCommand,
-			},
+		Name:        "link",
+		Description: "link discord user with valorant user",
+		Options:     []*discordgo.ApplicationCommandOption{
 		},
 	}
 
-	return command
+	commands = append(commands, command)
+
+	command = &discordgo.ApplicationCommand{
+		Name:        "unlink",
+		Description: "unlink discord user with valorant user",
+		Options:     []*discordgo.ApplicationCommandOption{},
+	}
+
+	commands = append(commands, command)
+
+	command = &discordgo.ApplicationCommand{
+		Name:        "bug",
+		Description: "report bug",
+		Options:     []*discordgo.ApplicationCommandOption{},
+	}
+
+	commands = append(commands, command)
+
+	return commands
 }
 
 func (dh *discordHandler) ready(s *discordgo.Session, m *discordgo.Ready) {
-	s.UpdateListeningStatus("/test")
+	s.UpdateListeningStatus("/link")
+	s.UpdateListeningStatus("/unlink")
+	s.UpdateListeningStatus("/bug")
 }
 
 func (dh *discordHandler) command(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.ApplicationCommandData().Name {
 
-	case "test":
-		options := i.ApplicationCommandData().Options
+	case "link":
 		response := ""
-
-		switch options[0].Name {
-
-		case "test-c":
-			response = "Test C Command"
-
-		case "test-a":
-			options := options[0].Options
-			switch options[0].Name {
-
-			case "test-a-a":
-				response = "Test A A Command"
-
-			case "test-a-b":
-				response = "Test A B Command"
-
-			default:
-				response = "Error!"
-			}
-
-		case "test-b":
-			options := options[0].Options
-			switch options[0].Name {
-
-			case "test-b-a":
-				response = "Test B A Command"
-
-			case "test-b-b":
-				response = "Test B B Command"
-
-			default:
-				response = "Error!"
-			}
-
-		default:
-			response = "Error!"
+		
+		message, err := s.ChannelMessageSend(i.ChannelID, "Введите данные в формате - nickname tag")
+		if err != nil {
+			fmt.Printf("Error getting rank channels: %s\n", err.Error())
+			os.Exit(5)
 		}
+
+		fmt.Println(message.Content)
 
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
